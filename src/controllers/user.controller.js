@@ -3,6 +3,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
+
+// Make data immutable on frontend
+const options = {
+  httpOnly: true,
+  secure: true,
+};
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -72,15 +79,15 @@ const logInUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
   // Data Validation
-  if (!username || !email || !password) {
+  if (!(username || email || password)) {
     throw new ApiError(400, "Credentials must be filled!");
   }
 
   // Finding User
-  const user = await user.findOne({
+  const user = await User.findOne({
     $or: [
-      { username: username.trim()?.toLowerCase() },
-      { email: email.trim()?.toLowerCase() },
+      { username: username?.trim()?.toLowerCase() },
+      { email: email?.trim()?.toLowerCase() },
     ],
   });
 
@@ -105,24 +112,20 @@ const logInUser = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
-  // Make data immutable on frontend
-  const options = {
-    htttpOnly: true,
-    secure: true,
-  };
-
   return res
     .status(200)
     .cookie("AccessToken", accessToken, options)
     .cookie("RefreshToken", refreshToken, options)
     .json(
-      200,
-      {
-        user: loggedInUser,
-        accessToken,
-        refreshToken,
-      },
-      "User logged In successfully!"
+      new ApiResponse(
+        201,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged In successfully!"
+      )
     );
 });
 
@@ -130,8 +133,8 @@ const logOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1,
       },
     },
     {
@@ -139,16 +142,54 @@ const logOutUser = asyncHandler(async (req, res) => {
     }
   );
 
-  // Make data immutable on frontend
-  const options = {
-    htttpOnly: true,
-    secure: true,
-  };
-
   return res
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(200, {}, "User logged Out successfully!");
+    .json(new ApiResponse(200, {}, "User logged Out successfully!"));
 });
-export { registerUser, logInUser, logOutUser };
+
+const accessTokenRefresh = asyncHandler(async (req, res) => {
+  try {
+    const incomingRefreshToken =
+      req.cookies.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, "Refresh Token is required!");
+    }
+
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const user = await User.findById(decodedToken?._id);
+
+    if (!user) {
+      throw new ApiError(401, "Invalid Refresh token!");
+    }
+
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new Error(401, "Invalid Refresh token");
+    }
+
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshTokens(user._id);
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Tokens refreshed successfully!"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, "Invalid Refresh token!");
+  }
+});
+
+export { registerUser, logInUser, logOutUser, accessTokenRefresh };

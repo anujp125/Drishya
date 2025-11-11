@@ -9,7 +9,7 @@ const app = express();
 
 /* -----------------------------------------------
    🔒 1. CORS (Cross-Origin Resource Sharing)
-   - Allows frontend (React, etc.) to communicate with backend.
+   - Allows frontend (React, etc.) or Postman to communicate with backend.
    - `credentials: true` enables cookie & token-based auth.
 -------------------------------------------------- */
 app.use(
@@ -63,20 +63,42 @@ import userRouter from "./routes/user.routes.js";
 app.use("/api/v1/users", userRouter);
 
 /* -----------------------------------------------
-   ⚠️ 7. Global Error Handling Middleware (optional, but recommended)
-   - Catches all errors thrown via asyncHandler or ApiError
+   🚫 7. Not Found Route Handler
+   - Handles requests to undefined routes cleanly.
+   - Prevents Express from sending empty headers only.
+-------------------------------------------------- */
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+/* -----------------------------------------------
+   ⚠️ 8. Global Error Handling Middleware
+   - Handles all errors thrown via asyncHandler or ApiError.
+   - Ensures a clean JSON response (no empty body).
 -------------------------------------------------- */
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
+  console.error("🔥 Global Error:", err);
+
+  // If headers are already sent (rare), let Express handle it
+  if (res.headersSent) {
+    return next(err);
+  }
 
   const statusCode = err.statusCode || 500;
 
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     success: false,
     message: err.message || "Internal Server Error",
     errors: err.errors || [],
+    // Show stack trace only in development
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });
 
+/* -----------------------------------------------
+   ✅ 9. Export app instance
+-------------------------------------------------- */
 export { app };
