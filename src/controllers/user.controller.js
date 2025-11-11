@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import { profile } from "console";
 
 // Make data immutable on frontend
 const options = {
@@ -192,4 +193,142 @@ const accessTokenRefresh = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, logInUser, logOutUser, accessTokenRefresh };
+const updatePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    throw new ApiError(400, "All fields are required!");
+  }
+
+  const user = await User.findById(req.user._id);
+
+  const isOldPasswordValid = await user.isPasswordCorrect(oldPassword);
+
+  if (!isOldPasswordValid) {
+    throw new ApiError(400, "Password is incorrect!");
+  }
+
+  if (newPassword !== confirmPassword) {
+    throw new ApiError(400, "New password and confirm password do not match!");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully!"));
+});
+
+const updateProfileDetails = asyncHandler(async (req, res) => {
+  const { newFullName, newEmail } = req.body;
+
+  const updatedDetails = {};
+
+  const profile = await User.findById(req.user?._id);
+
+  if (newFullName?.trim() == "" || newFullName == profile.fullName) {
+    throw new ApiError(400, "Fullname is not entered correctly!");
+  }
+
+  updatedDetails.fullName = newFullName;
+
+  if (newEmail?.trim() == "" || newEmail == profile.email) {
+    throw new ApiError(400, "New email is required!");
+  }
+
+  updatedDetails.email = newEmail.trim().toLowerCase();
+
+  // If no actual changes detected
+  if (Object.keys(updateDetails).length === 0) {
+    return res
+      .status(400)
+      .json(400, {}, "No new changes detected. Profile is already up to date.");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullName: updatedDetails.fullName,
+        email: updatedDetails.email,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Profile updated successfully!"));
+});
+
+const updateAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) throw new ApiError(400, "Avatar file is required!");
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar) {
+    throw new ApiError(
+      400,
+      "Something went wrong while uploading on cloudinary!"
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: avatarLocalPath?.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, avatar.url, "Avatar updated successfully!"));
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
+
+  if (!coverImageLocalPath) throw new ApiError(400, "Cover image is required!");
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+
+  if (!coverImage) {
+    throw new ApiError(
+      400,
+      "Something went wrong while uploading on cloudinary!"
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverImage: coverImage?.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, coverImage.url, "Cover image updated successfully!")
+    );
+});
+
+export {
+  registerUser,
+  logInUser,
+  logOutUser,
+  accessTokenRefresh,
+  updatePassword,
+  updateProfileDetails,
+  updateAvatar,
+  updateCoverImage,
+};

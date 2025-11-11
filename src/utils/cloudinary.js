@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import path from "path";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -11,30 +12,33 @@ const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
 
-    // Upload the file on Cloudinary
-    const response = await cloudinary.uploader.upload(localFilePath, {
+    const absolutePath = path.resolve(localFilePath);
+
+    // Upload file to Cloudinary
+    const response = await cloudinary.uploader.upload(absolutePath, {
       resource_type: "auto",
     });
 
-    // Remove local file after successful upload
-    fs.unlinkSync(localFilePath);
+    // Safely remove local temp file (async & non-blocking)
+    fs.unlink(absolutePath, (err) => {
+      if (err) console.warn("⚠ Temp file cleanup failed:", err.message);
+      else console.log("✅ Temp file deleted:", absolutePath);
+    });
 
-    // Return essential info only (optional)
+    // Return essential info
     return {
       url: response.secure_url,
       public_id: response.public_id,
     };
-
-    // Return full response info(previously implemented, not ideal incase of large responses)
-    // return response;
   } catch (error) {
-    console.error("Cloudinary upload error:", error);
+    console.error("❌ Cloudinary upload error:", error.message);
 
-    // Attempt to remove file if it exists
+    // Try cleanup if upload fails
     try {
-      if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
-    } catch (unlinkError) {
-      console.error("Error cleaning up local file:", unlinkError);
+      const absolutePath = path.resolve(localFilePath);
+      if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
+    } catch (unlinkErr) {
+      console.warn("⚠ Cleanup error after failed upload:", unlinkErr.message);
     }
 
     return null;

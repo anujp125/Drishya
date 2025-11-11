@@ -3,7 +3,11 @@ import {
   logInUser,
   logOutUser,
   registerUser,
-  accessTokenRefresh
+  accessTokenRefresh,
+  updatePassword,
+  updateProfileDetails,
+  updateAvatar,
+  updateCoverImage,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -34,10 +38,13 @@ router.route("/register").post(
   ]),
   registerUser // controller
 );
-
 router.route("/login").post(logInUser);
+router.route("/update-profile-details").post(updateProfileDetails);
+router.route("/update-avatar").post(updateAvatar);
+router.route("/update-coverImage").post(updateCoverImage);
 //secured routes
 router.route("/logout").post(verifyJWT, logOutUser);
 router.route("/refresh-access-token").post(accessTokenRefresh);
+router.route("/change-password").post(updatePassword);
 
 export default router;
