@@ -21,7 +21,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
     const refreshToken = user.generateRefreshToken(userId);
 
     user.refreshToken = refreshToken;
-    user.save({ validateBeforeSave: false });
+    await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -147,8 +147,8 @@ const logOutUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
+    .clearCookie("AccessToken", options)
+    .clearCookie("RefreshToken", options)
     .json(new ApiResponse(200, {}, "User logged Out successfully!"));
 });
 
@@ -196,7 +196,10 @@ const accessTokenRefresh = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  return res.status(200).json(200, req.user, "User fetched successfully.");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "User fetched successfully."));
+
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
@@ -242,11 +245,13 @@ const updateProfileDetails = asyncHandler(async (req, res) => {
   if (newEmail?.trim() == "" || newEmail == profile.email) {
     throw new ApiError(400, "New email is required!");
   }
-
-  updatedDetails.email = newEmail.trim().toLowerCase();
+  else(
+    updatedDetails.email = newEmail?.trim().toLowerCase()
+  )
+  
 
   // If no actual changes detected
-  if (Object.keys(updateDetails).length === 0) {
+  if (Object.keys(updatedDetails).length === 0) {
     return res
       .status(400)
       .json(400, {}, "No new changes detected. Profile is already up to date.");
@@ -286,7 +291,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        avatar: avatarLocalPath?.url,
+        avatar: avatar?.url || avatar?.secure_url,
       },
     },
     { new: true }
@@ -315,7 +320,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       $set: {
-        coverImage: coverImage?.url,
+        coverImage: coverImage?.url || coverImage?.secure_url,
       },
     },
     { new: true }
@@ -367,7 +372,7 @@ const getUserChannelInfo = asyncHandler(async (req, res) => {
         },
         isSubscribed: {
           $cond: {
-            if: { $in: [req.user?._id, "$Subscribers.subscriber"] },
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
             then: true,
             else: false,
           },
@@ -420,7 +425,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               as: "owner",
               pipeline: [
                 {
-                  project: {
+                  $project: {
                     fullName: 1,
                     username: 1,
                     avatar: 1,
