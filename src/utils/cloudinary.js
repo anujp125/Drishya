@@ -29,6 +29,8 @@ const uploadOnCloudinary = async (localFilePath) => {
     return {
       url: response.secure_url,
       public_id: response.public_id,
+      duration: response.duration || 0,
+      format: response.format,
     };
   } catch (error) {
     console.error("❌ Cloudinary upload error:", error.message);

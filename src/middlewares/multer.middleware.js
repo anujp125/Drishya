@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 
 // Allowed file types
-const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "video/mp4"];
 
 // File filter — checks file type and size
 function fileFilter(req, file, cb) {

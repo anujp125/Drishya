@@ -4,8 +4,6 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import { profile } from "console";
-import { channel } from "diagnostics_channel";
 import mongoose from "mongoose";
 
 // Make data immutable on frontend

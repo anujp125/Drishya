@@ -55,12 +55,13 @@ app.use(cookieParser());
    - Each module (users, videos, etc.) has its own router file.
 -------------------------------------------------- */
 import userRouter from "./routes/user.routes.js";
-
+import videoRouter from "./routes/video.routes.js";
 /* -----------------------------------------------
    🛣️ 6. Routes Declaration
    - All user-related routes start with /api/v1/users
 -------------------------------------------------- */
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/videos", videoRouter);
 
 /* -----------------------------------------------
    🚫 7. Not Found Route Handler
