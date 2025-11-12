@@ -11,38 +11,47 @@ cloudinary.config({
 const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
-
     const absolutePath = path.resolve(localFilePath);
 
-    // Upload file to Cloudinary
-    const response = await cloudinary.uploader.upload(absolutePath, {
-      resource_type: "auto",
+    // Determine file size
+    const { size } = fs.statSync(absolutePath);
+
+    // Choose upload method
+    const useLargeUpload = size > 20 * 1024 * 1024; // >20MB threshold
+
+    const uploadFn = useLargeUpload
+      ? cloudinary.uploader.upload_large
+      : cloudinary.uploader.upload;
+
+    // Upload to Cloudinary
+    const response = await uploadFn(absolutePath, {
+      resource_type: "auto", // "auto" detects image/video
+      chunk_size: 6_000_000, // only used by upload_large
+      folder: "uploads", // optional folder name
     });
 
-    // Safely remove local temp file (async & non-blocking)
+    // Cleanup local file
     fs.unlink(absolutePath, (err) => {
-      if (err) console.warn("⚠ Temp file cleanup failed:", err.message);
+      if (err) console.warn("⚠ Temp cleanup failed:", err.message);
       else console.log("✅ Temp file deleted:", absolutePath);
     });
 
-    // Return essential info
     return {
       url: response.secure_url,
       public_id: response.public_id,
       duration: response.duration || 0,
       format: response.format,
+      bytes: response.bytes,
+      resource_type: response.resource_type,
     };
   } catch (error) {
     console.error("❌ Cloudinary upload error:", error.message);
 
-    // Try cleanup if upload fails
+    // Cleanup on upload failure
     try {
-      const absolutePath = path.resolve(localFilePath);
-      if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
-    } catch (unlinkErr) {
-      console.warn("⚠ Cleanup error after failed upload:", unlinkErr.message);
-    }
-
+      const abs = path.resolve(localFilePath);
+      if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    } catch {}
     return null;
   }
 };

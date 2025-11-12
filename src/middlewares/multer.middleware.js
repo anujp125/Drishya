@@ -35,7 +35,7 @@ function fileFilter(req, file, cb) {
 
   // check size limits per field
   const maxSize =
-    file.fieldname === "avatar" ? 16 * 1024 * 1024 : 40 * 1024 * 1024; // avatar=16MB, coverImage=40MB
+    file.fieldname === "avatar" || "coverImage" || "thumbnail" ? 24 * 1024 * 1024 : 400 * 1024 * 1024; // avatar=24MB, coverImage=24MB, video=400MB
 
   if (file.size > maxSize) {
     return cb(
