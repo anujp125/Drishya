@@ -1,23 +1,45 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import mongoose from "mongoose";
-import { Video } from "../models/video.model.js";
-import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import mongoose, { isValidObjectId } from "mongoose";
+import { Video } from "../models/video.model.js";
+import { User } from "../models/user.model.js";
+import { Playlist } from "../models/playlist.model.js";
+import { Category } from "../models/category.model.js";
 
-const uploadVideo = asyncHandler(async (req, res) => {
-  const { title, description, playlist, category, isPublished } = req.body;
+const getAllVideos = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  //TODO: get all videos based on query, sort, pagination
+});
 
-  console.log(req.body);
+const publishVideo = asyncHandler(async (req, res) => {
+  const { title, description, isPublished } = req.body;
+  let { playlist, category } = req.body;
 
   if (!title || !description || !playlist || !category) {
     throw new ApiError(400, "All fields are required.");
   }
 
   if (title?.trim() == "") throw new ApiError(400, "Title must not be empty.");
+
+  // Find category or create it if doesn't exist
+  let categoryName = await Category.findOne({ name: category.trim() });
+  if (!categoryName) {
+    category = await Category.create({ name: category.trim() });
+  } else {
+    throw new ApiError(403, "Category already exists.");
+  }
+
+  // Find playlist or create it if doesn't exist
+  let playlistName = await Playlist.findOne({ title: playlist.trim() });
+  if (!playlistName) {
+    playlist = await Playlist.create({ title: playlist.trim() });
+  } else {
+    throw new ApiError(403, "Playlist already exists.");
+  }
 
   const videoLocalPath = req.files?.video?.[0]?.path;
   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
@@ -35,36 +57,29 @@ const uploadVideo = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Video upload failed, please retry.");
   }
 
-  console.log(videoUploaded);
-
   const userId = req.user?._id;
-
-  console.log(req.user);
 
   if (!userId) throw new ApiError(401, "Unauthorized: please login first.");
 
   const user = await User.findById(userId).select("username");
   const owner = user?.username;
 
-  console.log(owner);
-
   const video = await Video.create({
     title: title,
     description: description,
     owner: userId,
     duration: videoUploaded?.duration || null,
-    playlist: playlist,
-    category: category,
+    playlist: playlist._id,
+    category: category._id,
     isPublished: isPublished,
     videoFile: videoUploaded?.url,
-    thumbnail: thumbnailUploaded?.url || thumbnailUploaded?.secure_url || "",
+    thumbnail: thumbnailUploaded?.secure_url || thumbnailUploaded?.url || "",
   });
 
-  console.log(video);
-
-  const videoDetails = await Video.findById(video._id);
-
-  console.log(videoDetails);
+  const videoDetails = await Video.findById(video._id)
+    .populate("owner", "username fullName")
+    .populate("playlist", "title description")
+    .populate("category", "name");
 
   if (!videoDetails) {
     throw new ApiError(500, "Something went wrong while saving the video.");
@@ -81,4 +96,30 @@ const uploadVideo = asyncHandler(async (req, res) => {
     );
 });
 
-export { uploadVideo };
+const togglePublishStatus = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+});
+
+const getVideoById = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  //TODO: get video by id
+});
+
+const updateVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  //TODO: update video details like title, description, thumbnail
+});
+
+const deleteVideo = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  //TODO: delete video
+});
+
+export {
+  getAllVideos,
+  publishVideo,
+  getVideoById,
+  updateVideo,
+  deleteVideo,
+  togglePublishStatus,
+};

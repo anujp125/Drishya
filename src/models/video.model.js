@@ -27,13 +27,22 @@ const videoSchema = new Schema(
       type: Number,
       required: true,
     },
+    playlist: {
+      type: Schema.Types.ObjectId,
+      ref: "Playlist",
+    },
+    category: {
+      type: Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
     views: {
       type: Number,
       default: 0,
     },
     isPublished: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     owner: {
       type: Schema.Types.ObjectId,
