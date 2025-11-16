@@ -11,8 +11,61 @@ import { Playlist } from "../models/playlist.model.js";
 import { Category } from "../models/category.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
+  // Extract query parameters
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
-  //TODO: get all videos based on query, sort, pagination
+
+  // Step 1: Build filter object
+  const filter = {};
+
+  // Search by title or description (case-insensitive)
+  if (query) {
+    filter.$or = [
+      { title: { $regex: query, $options: "i" } },
+      { description: { $regex: query, $options: "i" } },
+    ];
+  }
+
+  // Filter by specific user (if valid ObjectId)
+  if (userId && mongoose.isValidObjectId(userId)) {
+    filter.owner = userId;
+  }
+
+  // Step 2: Define sorting
+  const sortOptions = {};
+  if (sortBy) {
+    sortOptions[sortBy] = sortType === "desc" ? -1 : 1;
+  } else {
+    sortOptions.createdAt = -1; // default sorting: newest first
+  }
+
+  // Step 3: Pagination logic
+  const skip = (page - 1) * limit;
+
+  // Step 4: Fetch videos
+  const videos = await Video.find(filter)
+    .sort(sortOptions)
+    .skip(skip)
+    .limit(parseInt(limit))
+    .populate("owner", "username email")
+    .populate("playlist", "title description")
+    .populate("category", "name");
+
+  // Step 5: Get total count for pagination
+  const totalVideos = await Video.countDocuments(filter);
+
+  // Step 6: Return structured response
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        videos,
+        currentPage: Number(page),
+        totalPages: Math.ceil(totalVideos / limit),
+        totalVideos,
+      },
+      "Videos fetched successfully."
+    )
+  );
 });
 
 const publishVideo = asyncHandler(async (req, res) => {
@@ -98,28 +151,204 @@ const publishVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found.");
+  }
+  video.isPublished = !video.isPublished;
+  await video.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { video },
+        "Video publish status toggled successfully."
+      )
+    );
 });
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: get video by id
+
+  const video = await Video.findById(videoId)
+    .populate("video", "title description")
+    .populate("owner", "username fullName")
+    .populate("playlist", "title description")
+    .populate("category", "name");
+
+  if (!video) {
+    throw new ApiError(404, "Video not found.");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { video }, "Video fetched successfully."));
 });
 
-const updateVideo = asyncHandler(async (req, res) => {
+const updateVideoDetails = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: update video details like title, description, thumbnail
+
+  const video = await Video.findById(videoId);
+
+  if (!video) {
+    throw new ApiError(404, "Video not found.");
+  }
+
+  const { title, description } = req.body;
+  let { playlist, category } = req.body;
+
+  // ensure authenticated
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "Unauthorized: please login first.");
+
+  // ensure owner
+  if (String(video.owner) !== String(userId)) {
+    throw new ApiError(403, "Forbidden: you are not the owner of this video.");
+  }
+
+  // update title & description
+  if (title !== undefined) {
+    if (String(title).trim() === "")
+      throw new ApiError(400, "Title must not be empty.");
+    video.title = title;
+  }
+  if (description !== undefined) {
+    video.description = description;
+  }
+
+  // handle category (accept id or name)
+  if (
+    category !== undefined &&
+    category !== null &&
+    String(category).trim() !== ""
+  ) {
+    if (isValidObjectId(category)) {
+      const existingCat = await Category.findById(category);
+      if (!existingCat) throw new ApiError(404, "Category not found.");
+      video.category = existingCat._id;
+    } else {
+      let cat = await Category.findOne({ name: category.trim() });
+      if (!cat) {
+        cat = await Category.create({ name: category.trim() });
+      }
+      video.category = cat._id;
+    }
+  }
+
+  // handle playlist (accept id or title)
+  if (
+    playlist !== undefined &&
+    playlist !== null &&
+    String(playlist).trim() !== ""
+  ) {
+    if (isValidObjectId(playlist)) {
+      const existingPl = await Playlist.findById(playlist);
+      if (!existingPl) throw new ApiError(404, "Playlist not found.");
+      video.playlist = existingPl._id;
+    } else {
+      let pl = await Playlist.findOne({ title: playlist.trim() });
+      if (!pl) {
+        pl = await Playlist.create({ title: playlist.trim() });
+      }
+      video.playlist = pl._id;
+    }
+  }
+
+  // handle thumbnail upload if provided
+  const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
+  if (thumbnailLocalPath) {
+    const uploadedThumb = await uploadOnCloudinary(thumbnailLocalPath);
+    if (!uploadedThumb)
+      throw new ApiError(500, "Thumbnail upload failed, please retry.");
+    video.thumbnail =
+      uploadedThumb.secure_url || uploadedThumb.url || video.thumbnail;
+  }
+
+  // save and return populated video
+  await video.save({ validateBeforeSave: false });
+
+  const updatedVideo = await Video.findById(video._id)
+    .populate("owner", "username fullName")
+    .populate("playlist", "title description")
+    .populate("category", "name");
+
+  if (!updatedVideo)
+    throw new ApiError(500, "Something went wrong while updating the video.");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { video: updatedVideo },
+        "Video updated successfully."
+      )
+    );
+  //TODO: update video de   tails like title, description, thumbnail
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found.");
+  }
+
+  // Remove video from its playlist if applicable
+  if (video.playlist) {
+    await Playlist.findByIdAndUpdate(video.playlist, {
+      $pull: { videos: video._id },
+    });
+  }
+
+  // Remove video from its category if applicable
+  if (video.category) {
+    await Category.findByIdAndUpdate(video.category, {
+      $pull: { videos: video._id },
+    });
+  }
+
+  // Delete the video
+  await Video.findByIdAndDelete(videoId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Video deleted successfully."));
   //TODO: delete video
+});
+
+const incrementViewCount = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found.");
+  }
+
+  video.viewCount += 1;
+  await video.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { viewCount: video.viewCount },
+        "View count incremented."
+      )
+    );
 });
 
 export {
   getAllVideos,
   publishVideo,
   getVideoById,
-  updateVideo,
+  updateVideoDetails,
   deleteVideo,
   togglePublishStatus,
+  incrementViewCount,
 };
