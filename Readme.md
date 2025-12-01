@@ -6,13 +6,13 @@
 
 ## 🚀 Features
 
-* 🔐 **User Authentication** – Secure registration and login with JWT and bcrypt.
-* 🧠 **Async Error Handling** – Centralized error handling using `asyncHandler` and `ApiError`.
-* 📤 **Cloudinary Integration** – Media uploads handled via Multer + Cloudinary.
-* 🧾 **Structured API Responses** – Consistent API formatting with `ApiResponse`.
-* 🧩 **Modular Architecture** – Clean separation of controllers, routes, models, and utilities.
-* ⚙️ **Environment Configurable** – All credentials managed through `.env`.
-* 🌐 **CORS Enabled** – Secure cross-origin communication for frontend integration.
+- 🔐 **User Authentication** – Secure registration and login with JWT and bcrypt.
+- 🧠 **Async Error Handling** – Centralized error handling using `asyncHandler` and `ApiError`.
+- 📤 **Cloudinary Integration** – Media uploads handled via Multer + Cloudinary.
+- 🧾 **Structured API Responses** – Consistent API formatting with `ApiResponse`.
+- 🧩 **Modular Architecture** – Clean separation of controllers, routes, models, and utilities.
+- ⚙️ **Environment Configurable** – All credentials managed through `.env`.
+- 🌐 **CORS Enabled** – Secure cross-origin communication for frontend integration.
 
 ---
 
@@ -103,48 +103,6 @@ REFRESH_TOKEN_EXPIRY=7d
 
 ---
 
-## 🧩 API Endpoints
-
-| Method   | Endpoint                 | Description                   |
-| -------- | ------------------------ | ----------------------------- |
-| **POST** | `/api/v1/users/register` | Register a new user           |
-| **POST** | `/api/v1/users/login`    | Login user *(coming soon)*    |
-| **GET**  | `/api/v1/videos`         | Fetch all videos *(future)*   |
-| **POST** | `/api/v1/videos/upload`  | Upload a new video *(future)* |
-
----
-
-## 🧾 Example API Response
-
-**Success:**
-
-```json
-{
-  "statusCode": 201,
-  "data": {
-    "_id": "672d4fe73b2a3f12417d2eaa",
-    "username": "anuj",
-    "email": "anuj@example.com"
-  },
-  "message": "User registered successfully!",
-  "success": true
-}
-```
-
-**Error:**
-
-```json
-{
-  "success": false,
-  "message": "User already exists!",
-  "statusCode": 409,
-  "errors": [],
-  "data": null
-}
-```
-
----
-
 ## 📦 NPM Scripts
 
 | Script    | Command                                 | Description             |
@@ -156,19 +114,17 @@ REFRESH_TOKEN_EXPIRY=7d
 
 ## 🧰 Developer Guidelines
 
-* Keep controllers small and focused.
-* Use `asyncHandler` for all async routes.
-* Always throw `ApiError` for predictable error handling.
-* Return `ApiResponse` for successful API calls.
-* Store temp uploads in `public/temp` before Cloudinary upload.
+- Keep controllers small and focused.
+- Use `asyncHandler` for all async routes.
+- Always throw `ApiError` for predictable error handling.
+- Return `ApiResponse` for successful API calls.
+- Store temp uploads in `public/temp` before Cloudinary upload.
 
 ---
 
 ## 🧑‍💻 Author
 
-**Anuj**
-🎓 B.Tech in AI & Data Science – LNCT, Bhopal
-💡 Interested in Data Science, AI, and Full Stack Development.
+**Anuj Pawar**
 
 ---
 
@@ -180,10 +136,8 @@ This project is licensed under the **MIT License** — free to use and modify wi
 
 ### 🌟 Future Roadmap
 
-* JWT-based authentication & refresh tokens.
-* Video compression & adaptive streaming.
-* Comments, likes, and playlists system.
-* Admin dashboard for content moderation.
-* Full frontend using React + Tailwind.
+- Video compression & adaptive streaming.
+- Admin dashboard for content moderation.
+- Full frontend using React + Tailwind.
 
 > **Drishya — Visualize. Upload. Stream.** 🎥

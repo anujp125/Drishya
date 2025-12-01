@@ -329,7 +329,7 @@ const incrementViewCount = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Video not found.");
   }
 
-  video.viewCount += 1;
+  video.views += 1;
   await video.save({ validateBeforeSave: false });
 
   return res
@@ -337,7 +337,7 @@ const incrementViewCount = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { viewCount: video.viewCount },
+        { views: video.views },
         "View count incremented."
       )
     );
