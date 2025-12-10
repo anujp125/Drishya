@@ -337,7 +337,6 @@ const deleteVideo = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, null, "Video deleted successfully."));
-  //TODO: delete video
 });
 
 const incrementViewCount = asyncHandler(async (req, res) => {
