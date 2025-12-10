@@ -45,7 +45,7 @@ const uploadOnCloudinary = async (localFilePath) => {
       resource_type: response.resource_type,
     };
   } catch (error) {
-    console.error("❌ Cloudinary upload error:", error.message);
+    console.error("Cloudinary upload error:", error.message);
 
     // Cleanup on upload failure
     try {
@@ -56,4 +56,23 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteFromCloudinary = async (publicId) => {
+  try {
+    if (!publicId) return null;
+
+    const response = await cloudinary.uploader.destroy(publicId);
+
+    if (response.result === "ok") {
+      console.log("File deleted from Cloudinary:", publicId);
+      return true;
+    } else {
+      console.warn("Cloudinary delete response:", response);
+      return false;
+    }
+  } catch (error) {
+    console.error("Cloudinary delete error:", error.message);
+    return false;
+  }
+};
+
+export { uploadOnCloudinary, deleteFromCloudinary };

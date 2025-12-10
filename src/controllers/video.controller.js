@@ -12,7 +12,16 @@ import { Category } from "../models/category.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   // Extract query parameters
-  const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy,
+    sortType,
+    userId,
+    playlistId,
+    categoryId,
+  } = req.query;
 
   // Step 1: Build filter object
   const filter = {};
@@ -28,6 +37,16 @@ const getAllVideos = asyncHandler(async (req, res) => {
   // Filter by specific user (if valid ObjectId)
   if (userId && mongoose.isValidObjectId(userId)) {
     filter.owner = userId;
+  }
+
+  // Filter by specific playlist (if valid ObjectId)
+  if (playlistId && mongoose.isValidObjectId(playlistId)) {
+    filter.playlist = playlistId;
+  }
+
+  // Filter by specific category (if valid ObjectId)
+  if (categoryId && mongoose.isValidObjectId(categoryId)) {
+    filter.category = categoryId;
   }
 
   // Step 2: Define sorting
@@ -342,6 +361,7 @@ const incrementViewCount = asyncHandler(async (req, res) => {
       )
     );
 });
+
 
 export {
   getAllVideos,

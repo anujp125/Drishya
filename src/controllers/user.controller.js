@@ -1,7 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -197,7 +200,6 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "User fetched successfully."));
-
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
@@ -242,11 +244,7 @@ const updateProfileDetails = asyncHandler(async (req, res) => {
 
   if (newEmail?.trim() == "" || newEmail == profile.email) {
     throw new ApiError(400, "New email is required!");
-  }
-  else(
-    updatedDetails.email = newEmail?.trim().toLowerCase()
-  )
-  
+  } else updatedDetails.email = newEmail?.trim().toLowerCase();
 
   // If no actual changes detected
   if (Object.keys(updatedDetails).length === 0) {
@@ -278,6 +276,9 @@ const updateAvatar = asyncHandler(async (req, res) => {
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
+  const user_ = await User.findById(req.user?._id);
+  const oldAvatar = user_?.avatar;
+
   if (!avatar) {
     throw new ApiError(
       400,
@@ -295,6 +296,14 @@ const updateAvatar = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password");
 
+
+  if (oldAvatar) {
+    const publicId = oldAvatar.split("/").pop()?.split(".")[0];
+    if (publicId) {
+      await deleteFromCloudinary(publicId);
+    }
+  }
+
   return res
     .status(200)
     .json(new ApiResponse(200, avatar.url, "Avatar updated successfully!"));
@@ -306,6 +315,9 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   if (!coverImageLocalPath) throw new ApiError(400, "Cover image is required!");
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+  const user_ = await User.findById(req.user?._id);
+  const oldCoverImage = user_?.coverImage;
+
 
   if (!coverImage) {
     throw new ApiError(
@@ -324,6 +336,12 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password");
 
+  if (oldCoverImage) {
+    const publicId = oldCoverImage.split("/").pop()?.split(".")[0];
+    if (publicId) {
+      await deleteFromCloudinary(publicId);
+    }
+  }
   return res
     .status(200)
     .json(
