@@ -47,6 +47,41 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Video liked Successfully."));
 });
 
+const toggleCommentLike = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid comment ID.");
+  }
+  if (!userId) throw new ApiError(401, "Unauthorized: please login first.");
+
+  const comment = await Comment.findById(commentId);
+
+  if (!comment) throw new ApiError(404, "Comment not found.");
+
+  const likedComment = await Like.findOne({
+    comment: commentId,
+    likedBy: userId,
+  });
+
+  if (likedComment) {
+    await Like.findByIdAndDelete(likedComment._id);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "Comment disliked successfully."));
+  }
+
+  await Like.create({
+    comment: commentId,
+    likedBy: userId,
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Comment liked Successfully."));
+});
+
 const togglePlaylistLike = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
 
@@ -115,7 +150,33 @@ const toggleBitLike = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, "Bit liked Successfully."));
 });
 
+const getLikedVideos = asyncHandler(async (req, res) => {
+  if (!userId) throw new ApiError(401, "Unauthorized: please login first.");
 
+const likedVideos = await Like.aggregate([
+  {
+    $match: {
+      likedBy: userId,
+      video: { $exists: true },
+    },
+  },
+  {
+    $lookup: {
+      from: "Videos",
+      localField: "video",
+      foreignField: "_id",
+      as: "videoDetails",
+    },
+  },
+    {
+      $unwind: "$videoDetails",
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Liked videos fetched successfully.", likedVideos));
+});
 
 export {
   toggleVideoLike,
